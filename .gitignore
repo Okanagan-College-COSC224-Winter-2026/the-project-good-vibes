@@ -105,6 +105,7 @@ docker-compose.override.yml
 .idea/
 *.swp
 *.swo
+*.session.sql
 
 #######
 # OS  #

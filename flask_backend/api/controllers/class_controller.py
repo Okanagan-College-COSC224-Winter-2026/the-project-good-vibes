@@ -116,6 +116,7 @@ def enroll_students():
     -    The list of student emails is passed in the request body as a CSV file.
     """
 
+
     data = request.get_json()
     class_id = data.get("class_id")
     student_emails_csv = data.get("students", "")
