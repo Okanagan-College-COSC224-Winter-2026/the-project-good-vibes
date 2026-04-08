@@ -264,6 +264,8 @@ def migrate_course_image_command():
 
 def init_app(app):
     """Register CLI commands with the Flask app"""
+    from .seed_demo import seed_demo_command
+    app.cli.add_command(seed_demo_command)
     app.cli.add_command(init_db_command)
     app.cli.add_command(drop_db_command)
     app.cli.add_command(migrate_assignment_columns_command)
