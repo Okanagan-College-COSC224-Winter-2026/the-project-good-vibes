@@ -58,7 +58,7 @@ services:
     environment:
       # Flask configuration
       FLASK_APP: api
-      FLASK_ENV: ${FLASK_ENV:-production}
+      FLASK_ENV: ${FLASK_ENV:-development}
       # To enable development mode, set FLASK_ENV=development in your .env file or environment.
       
       # Security secrets (override via .env file or environment)
@@ -82,6 +82,8 @@ services:
       DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD:-}
+    volumes:
+      - ./flask_backend/instance/uploads:/app/instance/uploads
     depends_on:
       postgres:
         condition: service_healthy

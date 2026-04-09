@@ -83,22 +83,35 @@ def seed_demo_command():
     db.session.flush()
 
     # --- Courses ---
+    # course1 gets ID 1, course5 gets ID 5 (matching existing course images)
     course1 = Course.get_by_name_teacher("Software Engineering", teacher.id)
     if not course1:
         course1 = Course(teacherID=teacher.id, name="Software Engineering")
         db.session.add(course1)
         db.session.flush()
 
-    course2 = Course.get_by_name_teacher("Database Systems", teacher.id)
-    if not course2:
-        course2 = Course(teacherID=teacher.id, name="Database Systems")
-        db.session.add(course2)
+    # Filler courses (IDs 2-4) to push Database Systems to ID 5
+    filler_courses = [
+        "Data Structures & Algorithms",
+        "Operating Systems",
+        "Computer Networks",
+    ]
+    for filler_name in filler_courses:
+        if not Course.get_by_name_teacher(filler_name, teacher.id):
+            fc = Course(teacherID=teacher.id, name=filler_name)
+            db.session.add(fc)
+    db.session.flush()
+
+    course5 = Course.get_by_name_teacher("Database Systems", teacher.id)
+    if not course5:
+        course5 = Course(teacherID=teacher.id, name="Database Systems")
+        db.session.add(course5)
         db.session.flush()
 
-    # Enroll all students in both courses
+    # Enroll all students in the two main courses
     for s in students:
         _enroll(s, course1)
-        _enroll(s, course2)
+        _enroll(s, course5)
     db.session.flush()
 
     # --- Groups (Course 1) ---
@@ -121,14 +134,14 @@ def seed_demo_command():
         _add_to_group(s, group_beta)
     db.session.flush()
 
-    # --- Assignment 1: "Sprint 1 Review" (Course 1, past due, individual + group) ---
+    # --- Assignment 1: "Sprint 1" (Course 1, past due, individual + group) ---
     now = datetime.now(timezone.utc)
-    a1 = Assignment.query.filter_by(courseID=course1.id, name="Sprint 1 Review").first()
+    a1 = Assignment.query.filter_by(courseID=course1.id, name="Sprint 1").first()
     if not a1:
         a1 = Assignment(
             courseID=course1.id,
-            name="Sprint 1 Review",
-            description="Evaluate your teammates' contributions to Sprint 1.",
+            name="Sprint 1",
+            description="First sprint deliverable — implement core user stories and present progress.",
             due_date=now - timedelta(days=7),
             is_anonymous=True,
             individual_reviews=True,
@@ -137,13 +150,13 @@ def seed_demo_command():
         db.session.add(a1)
         db.session.flush()
 
-    # --- Assignment 2: "Sprint 2 Review" (Course 1, upcoming) ---
-    a2 = Assignment.query.filter_by(courseID=course1.id, name="Sprint 2 Review").first()
+    # --- Assignment 2: "Sprint 2" (Course 1, upcoming) ---
+    a2 = Assignment.query.filter_by(courseID=course1.id, name="Sprint 2").first()
     if not a2:
         a2 = Assignment(
             courseID=course1.id,
-            name="Sprint 2 Review",
-            description="Evaluate your teammates' contributions to Sprint 2.",
+            name="Sprint 2",
+            description="Second sprint deliverable — refine features and prepare for demo day.",
             due_date=now + timedelta(days=14),
             is_anonymous=True,
             individual_reviews=True,
@@ -152,13 +165,13 @@ def seed_demo_command():
         db.session.add(a2)
         db.session.flush()
 
-    # --- Assignment 3: "ER Diagram Peer Review" (Course 2, past due, individual only) ---
-    a3 = Assignment.query.filter_by(courseID=course2.id, name="ER Diagram Peer Review").first()
+    # --- Assignment 3: "ER Diagram" (Course 2, past due, individual only) ---
+    a3 = Assignment.query.filter_by(courseID=course5.id, name="ER Diagram").first()
     if not a3:
         a3 = Assignment(
-            courseID=course2.id,
-            name="ER Diagram Peer Review",
-            description="Review a classmate's ER diagram for correctness and clarity.",
+            courseID=course5.id,
+            name="ER Diagram",
+            description="Design an ER diagram for the given business scenario.",
             due_date=now - timedelta(days=3),
             is_anonymous=False,
             individual_reviews=True,
@@ -246,7 +259,7 @@ def seed_demo_command():
                 reviewerID=reviewer.id,
                 revieweeID=reviewee.id,
                 review_type="individual",
-                comments=f"Good work on Sprint 1, {reviewee.name.split()[0]}!",
+                comments=f"Good work, {reviewee.name.split()[0]}!",
             )
             db.session.add(review)
             db.session.flush()
@@ -308,7 +321,7 @@ def seed_demo_command():
                 reviewerID=reviewer.id,
                 revieweeID=reviewee.id,
                 review_type="individual",
-                comments=f"Nice ER diagram, {reviewee.name.split()[0]}.",
+                comments=f"Nice work on the diagram, {reviewee.name.split()[0]}.",
             )
             db.session.add(review)
             db.session.flush()
@@ -340,11 +353,12 @@ def seed_demo_command():
     click.echo(f"            david@demo.com, emma@demo.com, frank@demo.com")
     click.echo("")
     click.echo("Courses:")
-    click.echo(f"  - Software Engineering (2 assignments, groups, individual + group reviews)")
-    click.echo(f"  - Database Systems (1 assignment, individual reviews only)")
+    click.echo("  - Software Engineering (2 assignments, groups, individual + group reviews)")
+    click.echo("  - Data Structures & Algorithms, Operating Systems, Computer Networks (empty)")
+    click.echo("  - Database Systems (1 assignment, individual reviews only)")
     click.echo("")
     click.echo("Features demonstrated:")
     click.echo("  - Individual & group peer reviews with scores")
-    click.echo("  - Grade override (Alice, Sprint 1 Review)")
+    click.echo("  - Grade override (Alice, Sprint 1)")
     click.echo("  - Submitted vs Upcoming vs Overdue assignment badges")
     click.echo("  - Gradebook with equal-weight averaging")
