@@ -1,0 +1,6 @@
+role,name,email,password,must_change_password
+admin,Casey Rowan,qa.admin@example.com,TestPass123!,false
+teacher,Ada Sinclair,teacher1@example.com,TestPass123!,true
+teacher,Jordan Vale,teacher2@example.com,TestPass123!,true
+teacher,Priya Nair,teacher3@example.com,TestPass123!,true
+
