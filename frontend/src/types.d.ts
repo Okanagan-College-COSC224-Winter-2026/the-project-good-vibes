@@ -2,6 +2,7 @@ interface Course {
   id: number;
   teacherID: number;
   name: string;
+  image_path?: string;
 }
 
 interface User {
