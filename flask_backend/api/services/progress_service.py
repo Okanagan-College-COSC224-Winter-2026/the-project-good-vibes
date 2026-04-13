@@ -1,5 +1,7 @@
 """Progress tracking service — calculates review completion progress per assignment."""
 
+from sqlalchemy import func
+
 from ..models import CourseGroup, Group_Members, Review
 from .group_service import get_user_group_in_course
 
@@ -49,24 +51,36 @@ def get_review_progress(user, course_id, assignments):
     for assignment in assignments:
         # Individual reviews (only if enabled for this assignment)
         if assignment.individual_reviews:
-            ind_completed = Review.query.filter_by(
-                assignmentID=assignment.id,
-                reviewerID=user.id,
-                review_type="individual",
-            ).count()
+            ind_completed_raw = (
+                Review.query.with_entities(func.count(func.distinct(Review.revieweeID)))
+                .filter_by(
+                    assignmentID=assignment.id,
+                    reviewerID=user.id,
+                    review_type="individual",
+                )
+                .scalar()
+                or 0
+            )
             ind_required = individual_required
+            ind_completed = min(int(ind_completed_raw), int(ind_required))
         else:
             ind_completed = 0
             ind_required = 0
 
         # Group reviews (only if enabled for this assignment)
         if assignment.group_reviews and user_group and group_member_ids:
-            grp_completed = Review.query.filter(
-                Review.assignmentID == assignment.id,
-                Review.reviewerID.in_(group_member_ids),
-                Review.review_type == "group",
-            ).count()
+            grp_completed_raw = (
+                Review.query.with_entities(func.count(func.distinct(Review.revieweeID)))
+                .filter(
+                    Review.assignmentID == assignment.id,
+                    Review.reviewerID.in_(group_member_ids),
+                    Review.review_type == "group",
+                )
+                .scalar()
+                or 0
+            )
             grp_required = group_required
+            grp_completed = min(int(grp_completed_raw), int(grp_required))
         else:
             grp_completed = 0
             grp_required = 0
