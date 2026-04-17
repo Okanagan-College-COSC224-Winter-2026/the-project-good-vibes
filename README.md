@@ -1,6 +1,5 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/Qs_OeS3S)
 # Peer Evaluation App
-# Peer Evaluation App Test
 
 ## What is This?
 
@@ -83,9 +82,9 @@ docker-compose down -v      # Stop and remove database data
 - ✅ SQLite (dev) / PostgreSQL (production) support
 - ✅ Course and assignment management
 - ✅ Student roster upload with auto-account creation
-- 🚧 Group creation and management (in progress)
-- 🚧 Rubric-based peer evaluations (in progress)
-- 🚧 Anonymous peer review workflows (planned)
+- ✅ Group creation and management
+- ✅ Rubric-based peer evaluations
+- ✅ Anonymous peer review workflows
 
 ## Prerequisites
 
@@ -188,15 +187,3 @@ This project is for educational purposes as part of COSC 470 at Okanagan College
 - Default role for public registration is 'student'
 - Teachers and admins must be created by existing admins
 - **PRODUCTION SECURITY**: See [Production Deployment Guide](docs/dev-guidelines/PRODUCTION_DEPLOYMENT.md) for required security configuration before deploying to production
-
-## Contributing
-
-1. Create a feature branch from `dev` ([follow guidelines](docs/dev-guidelines/dev-ops.md))
-2. Make your changes
-3. Write/update tests
-4. Update documentation
-5. Submit a pull request to `dev`
-
-## License
-
-See [LICENSE](LICENSE) file for details.
