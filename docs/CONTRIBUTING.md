@@ -183,6 +183,7 @@ Use this format: `<type>/<short-description>`
 - Follow existing component patterns
 - Use functional components with hooks
 - Use meaningful prop names
+- Use Tailwind CSS utility classes for styling (avoid inline styles or separate CSS files)
 
 ### File Organization
 

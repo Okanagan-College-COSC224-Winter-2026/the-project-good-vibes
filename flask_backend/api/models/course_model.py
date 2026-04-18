@@ -15,11 +15,15 @@ class Course(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     teacherID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
     name = db.Column(db.String(255), nullable=True)
+    image_path = db.Column(db.String(255), nullable=True)
 
     # relationships
     teacher = db.relationship("User", back_populates="teaching_courses", foreign_keys=[teacherID])
     assignments = db.relationship(
         "Assignment", back_populates="course", cascade="all, delete-orphan", lazy="dynamic"
+    )
+    groups = db.relationship(
+        "CourseGroup", back_populates="course", cascade="all, delete-orphan", lazy="dynamic"
     )
     user_courses = db.relationship(
         "User_Course",
@@ -70,6 +74,11 @@ class Course(db.Model):
     def get_courses_by_teacher(cls, teacher_id):
         """Get all courses taught by a specific teacher"""
         return cls.query.filter_by(teacherID=teacher_id).all()
+
+    @classmethod
+    def search_by_name(cls, query):
+        """Search courses by name (case-insensitive partial match)"""
+        return cls.query.filter(cls.name.ilike(f"%{query}%")).all()
 
     @classmethod
     def get_by_name(cls, name):

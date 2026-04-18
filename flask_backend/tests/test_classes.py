@@ -540,3 +540,177 @@ def test_enroll_in_class_invalid_email_format(test_client, make_admin):
     )
     assert response.status_code == 400
     assert response.json["msg"] == "Invalid email format: johndoeatexample.com"
+
+
+# ============================================================================
+# LIST CLASS MEMBERS TESTS
+# ============================================================================
+
+
+def test_list_class_members(test_client, make_admin, enroll_user_in_course):
+    """
+    GIVEN a logged-in teacher with a class that has enrolled students
+    WHEN POST /class/members is called with a valid class id
+    THEN the list of enrolled members should be returned
+    """
+    # Create admin/teacher
+    admin = make_admin(email="admin@example.com", password="admin", name="Admin Teacher")
+
+    # Login as teacher
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # Create a class
+    create_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Test Class"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = create_response.json["class"]["id"]
+
+    # Create and enroll students
+    test_client.post(
+        "/auth/register",
+        data=json.dumps({"name": "Student One", "password": "123456", "email": "student1@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+    test_client.post(
+        "/auth/register",
+        data=json.dumps({"name": "Student Two", "password": "123456", "email": "student2@example.com"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # Get student IDs and enroll them
+    from api.models import User
+    student1 = User.query.filter_by(email="student1@example.com").first()
+    student2 = User.query.filter_by(email="student2@example.com").first()
+    enroll_user_in_course(user_id=student1.id, course_id=class_id)
+    enroll_user_in_course(user_id=student2.id, course_id=class_id)
+
+    # Re-login as teacher (registration logs us out)
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # List members
+    response = test_client.post(
+        "/class/members",
+        data=json.dumps({"id": class_id}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    members = response.json
+    assert isinstance(members, list)
+    assert len(members) == 2
+
+    # Check that returned members have correct fields (no password!)
+    for member in members:
+        assert "id" in member
+        assert "name" in member
+        assert "email" in member
+        assert "password" not in member
+
+    # Verify correct students are returned
+    emails = [m["email"] for m in members]
+    assert "student1@example.com" in emails
+    assert "student2@example.com" in emails
+
+
+def test_list_class_members_empty_class(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher with an empty class
+    WHEN POST /class/members is called
+    THEN an empty list should be returned
+    """
+    make_admin(email="admin@example.com", password="admin", name="Admin Teacher")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    # Create a class but don't enroll anyone
+    create_response = test_client.post(
+        "/class/create_class",
+        data=json.dumps({"name": "Empty Class"}),
+        headers={"Content-Type": "application/json"},
+    )
+    class_id = create_response.json["class"]["id"]
+
+    response = test_client.post(
+        "/class/members",
+        data=json.dumps({"id": class_id}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 200
+    assert response.json == []
+
+
+def test_list_class_members_not_logged_in(test_client):
+    """
+    GIVEN a non-logged-in user
+    WHEN POST /class/members is called
+    THEN the request should be unauthorized (401)
+    """
+    response = test_client.post(
+        "/class/members",
+        data=json.dumps({"id": 1}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 401
+
+
+def test_list_class_members_class_not_found(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher
+    WHEN POST /class/members is called with a non-existent class id
+    THEN a 404 error should be returned
+    """
+    make_admin(email="admin@example.com", password="admin", name="Admin Teacher")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.post(
+        "/class/members",
+        data=json.dumps({"id": 99999}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 404
+    assert response.json["msg"] == "Class not found"
+
+
+def test_list_class_members_missing_id(test_client, make_admin):
+    """
+    GIVEN a logged-in teacher
+    WHEN POST /class/members is called without an id
+    THEN a 400 error should be returned
+    """
+    make_admin(email="admin@example.com", password="admin", name="Admin Teacher")
+
+    test_client.post(
+        "/auth/login",
+        data=json.dumps({"email": "admin@example.com", "password": "admin"}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    response = test_client.post(
+        "/class/members",
+        data=json.dumps({}),
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    assert response.json["msg"] == "Missing class id"

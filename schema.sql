@@ -19,6 +19,8 @@ CREATE TABLE Assignment (
     id SERIAL PRIMARY KEY,
     courseID INT,
     name VARCHAR(255),
+    description TEXT,
+    start_date TIMESTAMP NULL,
     rubric VARCHAR(255),
     due_date TIMESTAMP NULL
 );
@@ -26,7 +28,7 @@ CREATE TABLE Assignment (
 CREATE TABLE CourseGroup (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255),
-    assignmentID INT NOT NULL
+    courseID INT NOT NULL
 );
 
 CREATE TABLE Submission (
@@ -39,7 +41,6 @@ CREATE TABLE Submission (
 CREATE TABLE Group_Members (
     groupID INT,
     userID INT,
-    assignmentID INT,
     PRIMARY KEY (userID, groupID)
 );
 
@@ -126,7 +127,7 @@ VALUES
     (5, 'Assignment 2', 'Routing Protocols');
 
 -- Insert dummy CourseGroups
-INSERT INTO CourseGroup (name, assignmentID)
+INSERT INTO CourseGroup (name, courseID)
 VALUES
     ('Group A', 1),
     ('Group B', 1),
@@ -145,13 +146,13 @@ VALUES
     ('/submissions/william_harris/assignment1.pdf', 5, 5);
 
 -- Insert dummy Group_Members
-INSERT INTO Group_Members (groupID, userID, assignmentID)
+INSERT INTO Group_Members (groupID, userID)
 VALUES
-    (1, 1, 1),
-    (1, 2, 1),
-    (1, 3, 1),
-    (2, 4, 1),
-    (2, 5, 1);
+    (1, 1),
+    (1, 2),
+    (1, 3),
+    (2, 4),
+    (2, 5);
 
 
 -- Insert dummy User_Courses
@@ -204,8 +205,8 @@ VALUES
 --     FOREIGN KEY (courseID) REFERENCES Course(id);
 
 -- ALTER TABLE CourseGroup
---     ADD CONSTRAINT fk_coursegroup_assignment
---     FOREIGN KEY (assignmentID) REFERENCES Assignment(id);
+--     ADD CONSTRAINT fk_coursegroup_course
+--     FOREIGN KEY (courseID) REFERENCES Course(id);
 
 -- ALTER TABLE Submission
 --     ADD CONSTRAINT fk_submission_student

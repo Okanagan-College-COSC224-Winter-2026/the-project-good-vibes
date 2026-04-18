@@ -25,14 +25,19 @@ entity "Assignment" as A {
   courseID : INT <<FK Course.id>>
   name : VARCHAR(255)
   rubric : VARCHAR(255)
-  due_date : DATE
+  description : TEXT
+  start_date : TIMESTAMP
+  due_date : TIMESTAMP
+  is_anonymous : BOOLEAN <<default TRUE>>
+  individual_reviews : BOOLEAN <<default TRUE>>
+  group_reviews : BOOLEAN <<default TRUE>>
 }
 
 entity "CourseGroup" as CG {
   * id : SERIAL <<PK>>
   --
   name : VARCHAR(255)
-  assignmentID : INT <<FK Assignment.id>>
+  courseID : INT <<FK Course.id>>
 }
 
 entity "Submission" as S {
@@ -48,7 +53,6 @@ entity "Group_Members" as GM {
   --
   groupID : INT <<FK CourseGroup.id>>
   userID  : INT <<FK User.id>>
-  assignmentID : INT <<FK Assignment.id>>
 }
 
 entity "User_Courses" as UC {
@@ -63,7 +67,9 @@ entity "Review" as R {
   --
   assignmentID : INT <<FK Assignment.id>>
   reviewerID   : INT <<FK User.id>>
-  revieweeID   : INT <<FK User.id>>
+  revieweeID   : INT (polymorphic, no FK)
+  review_type  : VARCHAR(20) <<default 'individual'>>
+  comments     : VARCHAR(500)
 }
 
 entity "Criterion" as CR {
@@ -80,6 +86,7 @@ entity "Rubric" as RB {
   --
   assignmentID : INT <<FK Assignment.id>>
   canComment : BOOLEAN
+  rubric_type : VARCHAR(20) <<default 'individual'>>
 }
 
 entity "Criteria_Description" as CD {
@@ -91,10 +98,21 @@ entity "Criteria_Description" as CD {
   hasScore : BOOLEAN
 }
 
+entity "GradeOverride" as GO {
+  * id : SERIAL <<PK>>
+  --
+  studentID : INT <<FK User.id>>
+  assignmentID : INT <<FK Assignment.id>>
+  courseID : INT <<FK Course.id>>
+  override_score : FLOAT
+  teacherID : INT <<FK User.id>>
+  UNIQUE(studentID, assignmentID, courseID)
+}
+
 ' Relationships (FK -> PK)
 U ||--o{ C    : teaches (teacherID)
 C ||--o{ A    : has (courseID)
-A ||--o{ CG   : has (assignmentID)
+C ||--o{ CG   : has (courseID)
 A ||--o{ S    : has (assignmentID)
 U ||--o{ S    : submits (studentID)
 
@@ -106,12 +124,18 @@ U ||--o{ UC  : enrolled (userID)
 
 A ||--o{ R   : has (assignmentID)
 U ||--o{ R   : reviewer (reviewerID)
-U ||--o{ R   : reviewee (revieweeID)
+U ..o{ R    : reviewee (individual)
+CG ..o{ R   : reviewee (group)
 
 R ||--o{ CR  : contains (reviewID)
 CD ||--o{ CR : referenced_by (criterionRowID)
 
 A ||--o{ RB  : may_have (assignmentID)
 RB ||--o{ CD : describes (rubricID)
+
+U ||--o{ GO  : overrides_for (studentID)
+A ||--o{ GO  : overrides_on (assignmentID)
+C ||--o{ GO  : overrides_in (courseID)
+U ||--o{ GO  : set_by (teacherID)
 
 @enduml

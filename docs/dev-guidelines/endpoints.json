@@ -1,6 +1,7 @@
 {
   "generatedAt": "2025-10-24T00:00:00Z",
-  "note": "Machine-readable list of backend endpoints. Use for test generation or client scaffolding. Types are best-effort derived from route handlers.",
+  "note": "LEGACY: This documents the Node.js backend (backend/). The active Flask backend (flask_backend/) has different endpoints. See ENDPOINT_SUMMARY.md for Flask endpoints.",
+  "deprecationNotice": "Group endpoints below use assignmentID, but Flask backend uses courseID (groups are per-course, not per-assignment).",
   "endpoints": [
     {
       "method": "GET",

@@ -112,4 +112,4 @@ docker-compose.override.yml
 .DS_Store
 Thumbs.db
 ehthumbs.db
-Desktop.ini
+Desktop.ini*.session.sql

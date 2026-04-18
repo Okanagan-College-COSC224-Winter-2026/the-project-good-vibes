@@ -1,91 +1,73 @@
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
-import Home from "./pages/Home";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Sidebar from "./components/Sidebar";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import "./App.css";
-import Profile from "./pages/Profile";
-import CreateClass from "./pages/CreateClass";
-import LoginPage from "./pages/LoginPage";
-import ClassHome from "./pages/ClassHome";
-import ClassMembers from "./pages/ClassMembers";
-import Assignment from "./pages/Assignment";
-import Group from "./pages/Group";
-import RegisterPage from "./pages/RegisterPage";
-import ChangePassword from "./pages/ChangePassword";
-import CreateTeacher from "./pages/CreateTeacher";
+import ClassHome from "./features/classes/ClassHome";
+import ClassLayout from "./layouts/ClassLayout";
+import ProtectedLayout from "./layouts/ProtectedLayout";
+import GroupManager from "./features/groups/GroupManager";
+import ClassMembers from "./features/classes/ClassMembers";
+import LoginForm from "./features/authentication/LoginForm";
+import SignupForm from "./features/authentication/SignupForm";
+import UpdateAccount from "./features/account/UpdateAccount";
+import CreateTeacher from "./features/account/CreateTeacher";
+import CreateClassForm from "./features/classes/CreateClassForm";
+import DashboardLayout from "./features/dashboard/DashboardLayout";
+import ClassSettings from "./features/classes/ClassSettings";
+import ClassEvaluations from "./features/reviews/ClassEvaluations";
+import Gradebook from "./features/gradebook/Gradebook";
+import AssignmentDetail from "./features/assignments/AssignmentDetail";
+import ChangePasswordForm from "./features/authentication/ChangePasswordForm";
+import { AuthProvider } from "./features/authentication/AuthProvider";
+import { Toaster } from "react-hot-toast";
 
-function AppContent() {
-  const location = useLocation();
-  const noSidebarPaths = ["/", "/login", "/register", "/change-password"];
-
-  return (
-    <div className="App">
-      {!noSidebarPaths.includes(location.pathname) && <Sidebar />}
-      <div className="inner">
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/change-password" element={<ChangePassword />} />
-
-          <Route path="/home" element={
-            <ProtectedRoute>
-              <Home />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/admin/create-teacher" element={
-            <ProtectedRoute>
-              <CreateTeacher />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/classes/create" element={
-            <ProtectedRoute>
-              <CreateClass />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/profile/:id" element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/classes/:id/home" element={
-            <ProtectedRoute>
-              <ClassHome />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/classes/:id/members" element={
-            <ProtectedRoute>
-              <ClassMembers />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/assignments/:id" element={
-            <ProtectedRoute>
-              <Assignment />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/assignments/:id/group" element={
-            <ProtectedRoute>
-              <Group />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </div>
-    </div>
-  );
-}
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <AuthProvider>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: "12px",
+            padding: "12px 16px",
+            fontSize: "14px",
+            fontWeight: 500,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+          },
+          success: {
+            iconTheme: { primary: "#10b981", secondary: "#fff" },
+          },
+          error: {
+            iconTheme: { primary: "#ef4444", secondary: "#fff" },
+          },
+        }}
+      />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<LoginForm />} />
+          <Route path="/register" element={<SignupForm />} />
+          <Route path="/change-password" element={<ChangePasswordForm />} />
+
+          <Route element={<ProtectedLayout />}>
+            <Route path="/home" element={<DashboardLayout />} />
+            <Route path="/admin/create-teacher" element={<CreateTeacher />} />
+            <Route path="/profile/:id" element={<UpdateAccount />} />
+            <Route path="/classes/create" element={<CreateClassForm />} />
+
+            <Route path="/classes/:id" element={<ClassLayout />}>
+              <Route path="home" element={<ClassHome />} />
+              <Route path="members" element={<ClassMembers />} />
+              <Route path="groups" element={<GroupManager />} />
+              <Route path="evaluations" element={<ClassEvaluations />} />
+              <Route path="gradebook" element={<Gradebook />} />
+              <Route path="settings" element={<ClassSettings />} />
+              <Route path="assignments/:assignmentId" element={<AssignmentDetail />} />
+              <Route path="assignments/:assignmentId/manage" element={<AssignmentDetail />} />
+            </Route>
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

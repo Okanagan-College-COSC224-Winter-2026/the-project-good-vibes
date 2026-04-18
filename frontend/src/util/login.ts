@@ -32,6 +32,11 @@ export const isStudent = () => {
   return getUserRole() === "student";
 }
 
+export const getUserId = (): number | null => {
+  const user = JSON.parse(localStorage.getItem("user") || '{}');
+  return user.id || null;
+}
+
 export const hasRole = (...roles: string[]) => {
   const userRole = getUserRole();
   return roles.includes(userRole);

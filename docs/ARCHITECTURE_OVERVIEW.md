@@ -60,10 +60,13 @@ The system has three role types with hierarchical permissions:
 - Have due dates and submission requirements
 - Can have associated rubrics for evaluation
 - May be individual or group-based
+- Teachers can enable/disable individual reviews and group reviews per assignment
+- Can be set as anonymous (hides reviewer identity from students)
 
 ### 4. **Groups**
 
-- Assignment-specific student groupings
+- Course-level student groupings
+- Students remain in the same group for all assignments in a course
 - Enable peer evaluation within teams
 - Can be created manually or via roster upload
 - Students see only their group members' work
@@ -74,15 +77,19 @@ The system has three role types with hierarchical permissions:
 - Created by teachers
 - Contain multiple criteria/questions
 - Each criterion can be scored or comment-only
+- Two rubric types per assignment: **individual** (for peer reviews) and **group** (for group-to-group reviews)
 - Provide consistent evaluation standards
 
 ### 6. **Reviews**
 
-- Student evaluations of peer work
+- Two review types: **individual** (student reviews a peer within their group) and **group** (a group collectively reviews another group)
 - Anonymous to protect reviewer identity
 - Scoped to specific assignments
 - Structured by rubric criteria
-- Include both scores and qualitative comments
+- Include scores per criterion and an overall qualitative comment
+- Individual reviews: submitted and editable by the reviewer
+- Group reviews: any group member can submit on behalf of the group; all members can view and edit
+- Course grade = 50% individual average + 50% group average (weighted)
 
 ---
 
@@ -168,33 +175,78 @@ Students submit work:
   [etc. for Groups B and C]
 ```
 
-### Review Phase
+### Individual Review Phase
 ```
-Teacher assigns reviews:
-  Within Group A:
-    Alice reviews → Bob & Carol
-    Bob reviews   → Alice & Carol
-    Carol reviews → Alice & Bob
+Within Group A (using the individual rubric):
+  Alice reviews → Bob & Carol
+  Bob reviews   → Alice & Carol
+  Carol reviews → Alice & Bob
 
-Each review contains:
-  ├── Criterion 1 (Code Quality):     Score: 4/5, Comments: "..."
-  ├── Criterion 2 (Communication):    Score: 5/5, Comments: "..."
-  └── Criterion 3 (Effort):           Score: 3/5, Comments: "..."
+Each individual review contains:
+  ├── Overall Comment: "Great team player, very collaborative"
+  ├── Criterion 1 (Code Quality):     Score: 4/5
+  ├── Criterion 2 (Communication):    Score: 5/5
+  └── Criterion 3 (Effort):           Score: 3/5
+```
+
+### Group Review Phase
+```
+Groups review other groups (using the group rubric):
+  Group A reviews → Group B, Group C
+  Group B reviews → Group A, Group C
+  Group C reviews → Group A, Group B
+
+Any member can submit on behalf of their group.
+All group members can view and edit submitted group reviews.
+
+Each group review contains:
+  ├── Overall Comment: "Solid presentation and teamwork"
+  ├── Criterion 1 (Collaboration):    Score: 8/10
+  └── Criterion 2 (Presentation):     Score: 7/10
 ```
 
 ### Analysis Phase
 ```
-System aggregates for Alice:
-  Reviews received from: Bob, Carol
-  Average scores:
-    Code Quality:    (4 + 5) / 2 = 4.5
-    Communication:   (5 + 4) / 2 = 4.5
-    Effort:          (3 + 5) / 2 = 4.0
+System aggregates for Alice (via GET /review/course/<courseId>/summary):
 
-Teacher views:
-  ├── Individual scores
-  ├── Group averages
-  └── Outliers/concerns flagged
+  Individual reviews received from: Bob, Carol
+    Bob's review:   4 + 5 + 3 = 12
+    Carol's review: 5 + 4 + 5 = 14
+    Individual average: (12 + 14) / 2 = 13.0 / 15
+
+  Group reviews received by Group A from: Group B, Group C
+    Group B's review: 8 + 7 = 15
+    Group C's review: 9 + 8 = 17
+    Group average: (15 + 17) / 2 = 16.0 / 20
+
+  Course average: 50% individual + 50% group (weighted)
+
+Teacher views (same endpoint, sees all students):
+  ├── Individual student scores (?studentID=X)
+  ├── Aggregate scores across all reviews
+  ├── Per-assignment breakdowns (individual + group counts)
+  └── Weighted course average
+```
+
+### Gradebook Phase (Teacher)
+```
+Teacher opens Gradebook tab (GET /gradebook/course/<courseId>):
+  Returns all students × all assignments with computed grades
+
+  For each student × assignment cell:
+    ├── individualAverage / individualMax (from peer reviews)
+    ├── groupAverage / groupMax (from group reviews)
+    ├── overrideScore (teacher manual override, if set)
+    ├── effectiveGrade = overrideScore ?? (individualAvg + groupAvg)
+    └── effectiveMax = max possible from rubric criteria
+
+  Teacher actions:
+    ├── Click grade → inline edit → PUT /gradebook/course/<id>/override
+    ├── Clear override → DELETE /gradebook/course/<id>/override
+    └── Click eye icon → modal shows all reviews (individual + group)
+
+  Grade overrides are stored separately (GradeOverride table),
+  never overwriting the underlying peer review data.
 ```
 
 ---
@@ -218,11 +270,22 @@ Teacher views:
 │  │  ├── /user  (profile management)      │  │
 │  │  ├── /class (course management)       │  │
 │  │  ├── /assignment (CRUD operations)    │  │
+│  │  ├── /assignment-resource (file mgmt) │  │
+│  │  ├── /groups (course-level groups)    │  │
+│  │  ├── /rubric (evaluation criteria)    │  │
+│  │  ├── /submission (student uploads)    │  │
+│  │  ├── /gradebook (teacher gradebook)  │  │
 │  │  └── /admin (user administration)     │  │
 │  └─────────────────┬──────────────────────┘  │
 │                    │                          │
 │  ┌─────────────────▼──────────────────────┐  │
 │  │  Business Logic Layer                  │  │
+│  │  ├── Services (reusable logic)         │  │
+│  │  │   ├── grade_service (calculations)  │  │
+│  │  │   ├── progress_service (tracking)   │  │
+│  │  │   ├── review_masking (anonymity)    │  │
+│  │  │   ├── review_tracking               │  │
+│  │  │   └── group_service (group utils)   │  │
 │  │  ├── JWT Authentication               │  │
 │  │  ├── Role-Based Authorization         │  │
 │  │  └── Data Validation (Marshmallow)    │  │
@@ -231,11 +294,14 @@ Teacher views:
 │  ┌─────────────────▼──────────────────────┐  │
 │  │  Data Access Layer (SQLAlchemy ORM)   │  │
 │  │  ├── User Model                       │  │
-│  │  ├── Course Model                     │  │
+│  │  ├── Course / User_Course Models      │  │
 │  │  ├── Assignment Model                 │  │
-│  │  ├── Group Models                     │  │
-│  │  ├── Rubric/Criterion Models          │  │
-│  │  └── Review Model                     │  │
+│  │  ├── AssignmentResource Model         │  │
+│  │  ├── Submission Model                 │  │
+│  │  ├── Group Models (CourseGroup, etc.) │  │
+│  │  ├── Rubric/CriteriaDescription       │  │
+│  │  ├── Review/Criterion Models          │  │
+│  │  └── GradeOverride Model             │  │
 │  └─────────────────┬──────────────────────┘  │
 └────────────────────┼────────────────────────┘
                      │ SQL Queries
@@ -250,6 +316,7 @@ Teacher views:
 
 **Separation of Concerns:**
 - **Controllers** handle HTTP requests/responses, delegating to business logic
+- **Services** encapsulate complex, reusable business logic (grade calculations, progress tracking, anonymity masking) for code modularity and testability
 - **Models** encapsulate data and database operations
 - **Schemas** validate and serialize data between layers
 
@@ -321,33 +388,40 @@ User ──────────┬──── Course (as teacher)
                │
                ├──── Submission (work submitted)
                │
-               └──── Review (as reviewer/reviewee)
+               └──── Review (as reviewer; as reviewee for individual reviews)
 
 Course ────────┼──── Assignment
                │
+               ├──── CourseGroup (groups are course-level)
+               │
                └──── User_Course (enrollments)
 
-Assignment ────┼──── CourseGroup (groups)
+Assignment ────┼──── AssignmentResource (teacher uploads)
                │
                ├──── Submission (student work)
                │
-               ├──── Review (peer evaluations)
+               ├──── Review (peer evaluations — individual & group)
                │
-               └──── Rubric (evaluation criteria)
+               └──── Rubric (individual rubric + group rubric)
 
 Rubric ────────┼──── Criteria_Description (rubric rows)
 
 Review ────────┼──── Criterion (filled-in rubric responses)
                │
-               └──── Links: Reviewer + Reviewee (both Users)
+               ├──── Reviewer → User (who submitted)
+               │
+               └──── Reviewee → User (individual) or CourseGroup (group)
+                     (polymorphic, based on review_type)
 
 CourseGroup ───┼──── Group_Members (who's in this group)
+               │
+               └──── Review (as reviewee for group reviews)
 ```
 
 **Key Relationships:**
-- **One-to-Many**: Course → Assignments, Rubric → Criteria
+- **One-to-Many**: Course → Assignments, Rubric → Criteria, Course → CourseGroups
 - **Many-to-Many**: Users ↔ Courses (via User_Course), Users ↔ Groups (via Group_Members)
-- **Three-Way**: Review links Assignment + Reviewer + Reviewee
+- **Polymorphic**: Review.revieweeID → User (individual) or CourseGroup (group), determined by review_type
 
 See [database-schema.md](schema/database-schema.md) for complete details.
 
@@ -360,6 +434,7 @@ See [database-schema.md](schema/database-schema.md) for complete details.
 | **Frontend** | React 18 + TypeScript | UI components and routing |
 | | Vite | Fast dev server and build tool |
 | | React Router | Client-side navigation |
+| | Tailwind CSS | Utility-first CSS styling |
 | **Backend** | Flask 3.x | REST API framework |
 | | SQLAlchemy | ORM for database operations |
 | | Flask-JWT-Extended | JWT token management |
@@ -378,10 +453,10 @@ Current implementation supports core workflows. Planned features:
 
 - **Advanced Analytics**: Teacher dashboards with visualization
 - **Notification System**: Email alerts for deadlines and reviews
-- **File Uploads**: Support PDF/document submissions
 - **Rubric Templates**: Reusable evaluation criteria
 - **Peer Assignment Algorithms**: Automated fair distribution
 - **Grade Calculation**: Weighted scoring formulas
+- **Review Endpoints**: Peer review submission and retrieval
 - **Mobile Responsive UI**: Improved mobile experience
 
 See [user_stories.md](user_stories.md) for complete feature roadmap.

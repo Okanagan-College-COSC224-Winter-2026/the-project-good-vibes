@@ -95,7 +95,7 @@ npm install
 ```
 
 **What this does:**
-- Installs all frontend dependencies (React, Vite, TypeScript, etc.)
+- Installs all frontend dependencies (React, Vite, TypeScript, Tailwind CSS, etc.)
 
 ### Step 5: Start the Frontend Server
 
@@ -217,6 +217,7 @@ To stop the servers:
    ```bash
    cd flask_backend
    source venv/bin/activate  # or .\venv\Scripts\Activate.ps1 on Windows
+   export FLASK_APP=api #linux only
    flask run
    ```
 

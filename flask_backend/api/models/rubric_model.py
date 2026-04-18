@@ -13,6 +13,7 @@ class Rubric(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
     canComment = db.Column(db.Boolean, nullable=False, default=True)
+    rubric_type = db.Column(db.String(20), nullable=False, default="individual")  # "individual" | "group"
 
     # relationships
     assignment = db.relationship("Assignment", back_populates="rubrics")
@@ -20,9 +21,10 @@ class Rubric(db.Model):
         "CriteriaDescription", back_populates="rubric", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __init__(self, assignmentID, canComment=True):
+    def __init__(self, assignmentID, canComment=True, rubric_type="individual"):
         self.assignmentID = assignmentID
         self.canComment = canComment
+        self.rubric_type = rubric_type
 
     def __repr__(self):
         return f"<Rubric id={self.id} assignmentID={self.assignmentID}>"

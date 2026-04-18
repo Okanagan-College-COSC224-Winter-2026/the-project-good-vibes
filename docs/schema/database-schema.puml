@@ -14,6 +14,8 @@ class User {
   +email: String
   +hash_pass: String
   +role: String <<student|teacher|admin>>
+  +must_change_password: Boolean <<default FALSE>>
+  +avatar_path: String (nullable)
 }
 }
 
@@ -22,20 +24,26 @@ class Course {
   +id: Integer
   +teacherID: Integer
   +name: String
+  +image_path: String (nullable)
 }
 
 class Assignment {
   +id: Integer
   +courseID: Integer
   +name: String
+  +description: Text (nullable)
+  +start_date: DateTime (nullable)
   +rubric_text: String
   +due_date: DateTime (nullable)
+  +is_anonymous: Boolean <<default TRUE>>
+  +individual_reviews: Boolean <<default TRUE>>
+  +group_reviews: Boolean <<default TRUE>>
 }
 
 class CourseGroup {
   +id: Integer
   +name: String
-  +assignmentID: Integer
+  +courseID: Integer
 }
 }
 
@@ -50,7 +58,6 @@ class Submission {
 class Group_Members {
   +userID: Integer
   +groupID: Integer
-  +assignmentID: Integer
 }
 
 class User_Course {
@@ -62,7 +69,9 @@ class Review {
   +id: Integer
   +assignmentID: Integer
   +reviewerID: Integer
-  +revieweeID: Integer
+  +revieweeID: Integer (polymorphic)
+  +review_type: String <<individual|group>>
+  +comments: String
 }
 
 class Criterion {
@@ -79,6 +88,7 @@ class Rubric {
   +id: Integer
   +assignmentID: Integer
   +canComment: Boolean <<default TRUE>>
+  +rubric_type: String <<individual|group>>
 }
 
 class CriteriaDescription {
@@ -87,6 +97,29 @@ class CriteriaDescription {
   +question: String
   +scoreMax: Integer
   +hasScore: Boolean <<default TRUE>>
+}
+}
+
+package "Resources" {
+class AssignmentResource {
+  +id: Integer
+  +assignmentID: Integer
+  +uploaderID: Integer
+  +original_name: String
+  +path: String
+  +created_at: DateTime
+}
+}
+
+package "Grades" {
+class GradeOverride {
+  +id: Integer
+  +studentID: Integer
+  +assignmentID: Integer
+  +courseID: Integer
+  +override_score: Float
+  +teacherID: Integer
+  <<UNIQUE(studentID, assignmentID, courseID)>>
 }
 }
 
@@ -106,12 +139,11 @@ Course "1" o-- "0..*" User_Course : student links
 
 ' Course & assignment structure
 Course "1" --> "0..*" Assignment : assignments
-Assignment "1" --> "0..*" CourseGroup : groups
+Course "1" --> "0..*" CourseGroup : groups
 
 ' Group membership bridge
 CourseGroup "1" o-- "0..*" Group_Members : members
 User "1" o-- "0..*" Group_Members : memberships
-Assignment "1" o-- "0..*" Group_Members : context
 
 ' Submissions
 User "1" --> "0..*" Submission : submissions
@@ -120,12 +152,23 @@ Assignment "1" --> "0..*" Submission : collects
 ' Peer review flow
 Assignment "1" --> "0..*" Review : reviews
 User "1" --> "0..*" Review : reviewer
-User "1" <-- "0..*" Review : reviewee
+User "1" <.. "0..*" Review : reviewee (individual)
+CourseGroup "1" <.. "0..*" Review : reviewee (group)
 Review "1" --> "0..*" Criterion : criteria
 
 ' Rubrics and criteria
 Assignment "1" --> "0..*" Rubric : rubrics
 Rubric "1" --> "0..*" CriteriaDescription : questions
 CriteriaDescription "1" --> "0..*" Criterion : responses
+
+' Assignment resources
+Assignment "1" --> "0..*" AssignmentResource : resources
+User "1" --> "0..*" AssignmentResource : uploaded by
+
+' Grade overrides
+User "1" --> "0..*" GradeOverride : overrides for
+Assignment "1" --> "0..*" GradeOverride : overrides on
+Course "1" --> "0..*" GradeOverride : overrides in
+User "1" --> "0..*" GradeOverride : set by (teacher)
 
 @enduml

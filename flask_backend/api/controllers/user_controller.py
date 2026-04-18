@@ -2,10 +2,13 @@
 User management endpoints
 """
 
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+import os
+
+from flask import Blueprint, current_app, jsonify, request, send_from_directory
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, set_access_cookies
 from marshmallow import Schema, ValidationError, fields, validate
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 from ..models import User, UserSchema
 
@@ -14,11 +17,18 @@ bp = Blueprint("user", __name__, url_prefix="/user")
 # Create schema instances once (reusable)
 user_schema = UserSchema()
 
+ALLOWED_AVATAR_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def _allowed_avatar(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_AVATAR_EXTENSIONS
+
 
 class UserUpdateSchema(Schema):
     """Schema for updating user information"""
 
     name = fields.Str(validate=validate.Length(min=1, max=255))
+    email = fields.Email()
 
 
 user_update_schema = UserUpdateSchema()
@@ -60,11 +70,10 @@ def get_user_by_id(user_id):
 @bp.route("/", methods=["PUT"])
 @jwt_required()
 def update_current_user():
-    """Update current user information"""
+    """Update current user's name and/or email"""
     if not request.is_json:
         return jsonify({"msg": "Missing JSON in request"}), 400
 
-    # Validate input with Marshmallow
     try:
         data = user_update_schema.load(request.json)
     except ValidationError as err:
@@ -76,13 +85,81 @@ def update_current_user():
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    # Update allowed fields
     if "name" in data:
         user.name = data["name"]
 
+    email_changed = False
+    if "email" in data and data["email"] != user.email:
+        # Ensure new email is not already taken by another user
+        existing = User.get_by_email(data["email"])
+        if existing and existing.id != user.id:
+            return jsonify({"msg": "Email address is already in use"}), 400
+        user.email = data["email"]
+        email_changed = True
+
+    user.update()
+
+    response_data = user_schema.dump(user)
+
+    if email_changed:
+        # Reissue JWT with updated email so the session remains valid
+        response = jsonify(response_data)
+        new_token = create_access_token(identity=user.email)
+        set_access_cookies(response, new_token)
+        return response, 200
+
+    return jsonify(response_data), 200
+
+
+@bp.route("/avatar", methods=["POST"])
+@jwt_required()
+def upload_avatar():
+    """Upload or replace the current user's avatar image"""
+    if "avatar" not in request.files:
+        return jsonify({"msg": "No avatar file provided"}), 400
+
+    file = request.files["avatar"]
+    if not file or not file.filename:
+        return jsonify({"msg": "No file selected"}), 400
+
+    if not _allowed_avatar(file.filename):
+        allowed = ", ".join(sorted(ALLOWED_AVATAR_EXTENSIONS))
+        return jsonify({"msg": f"File type not allowed. Allowed types: {allowed}"}), 400
+
+    email = get_jwt_identity()
+    user = User.get_by_email(email)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    ext = file.filename.rsplit(".", 1)[1].lower()
+    filename = secure_filename(f"user_{user.id}.{ext}")
+
+    avatars_dir = os.path.join(current_app.instance_path, "uploads", "avatars")
+    os.makedirs(avatars_dir, exist_ok=True)
+
+    # Remove previous avatar file if extension changed
+    if user.avatar_path and user.avatar_path != filename:
+        old_path = os.path.join(avatars_dir, user.avatar_path)
+        if os.path.exists(old_path):
+            os.remove(old_path)
+
+    file.save(os.path.join(avatars_dir, filename))
+    user.avatar_path = filename
     user.update()
 
     return jsonify(user_schema.dump(user)), 200
+
+
+@bp.route("/avatar/<int:user_id>", methods=["GET"])
+@jwt_required()
+def get_avatar(user_id):
+    """Serve the avatar image for a user"""
+    user = User.get_by_id(user_id)
+    if not user or not user.avatar_path:
+        return jsonify({"msg": "No avatar found"}), 404
+
+    avatars_dir = os.path.join(current_app.instance_path, "uploads", "avatars")
+    return send_from_directory(avatars_dir, user.avatar_path)
 
 
 @bp.route("/<int:user_id>", methods=["DELETE"])

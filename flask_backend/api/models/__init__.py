@@ -1,9 +1,11 @@
 from .assignment_model import Assignment
+from .assignment_resource_model import AssignmentResource
 from .course_group_model import CourseGroup
 from .course_model import Course
 from .criteria_description_model import CriteriaDescription
 from .criterion_model import Criterion
 from .db import db, ma
+from .grade_override_model import GradeOverride
 from .group_members_model import Group_Members
 from .review_model import Review
 from .rubric_model import Rubric
@@ -15,6 +17,7 @@ from .schemas import (
     CriteriaDescriptionSchema,
     CriterionSchema,
     GroupMembersSchema,
+    ReviewListSchema,
     ReviewSchema,
     RubricSchema,
     SubmissionSchema,
@@ -34,11 +37,13 @@ __all__ = [
     "User",
     "Course",
     "Assignment",
+    "AssignmentResource",
     "Rubric",
     "CriteriaDescription",
     "Criterion",
     "Review",
     "CourseGroup",
+    "GradeOverride",
     "Group_Members",
     "User_Course",
     "Submission",
@@ -53,6 +58,7 @@ __all__ = [
     "CriteriaDescriptionSchema",
     "CriterionSchema",
     "ReviewSchema",
+    "ReviewListSchema",
     "CourseGroupSchema",
     "GroupMembersSchema",
     "UserCourseSchema",

@@ -18,6 +18,7 @@ class User(db.Model):
     hash_pass = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), default="student", nullable=False)
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+    avatar_path = db.Column(db.String(255), nullable=True)
 
     __table_args__ = (
         CheckConstraint("role IN ('student', 'teacher', 'admin')", name="check_valid_role"),
@@ -42,9 +43,6 @@ class User(db.Model):
     )
     reviews_made = db.relationship(
         "Review", back_populates="reviewer", foreign_keys="Review.reviewerID", lazy="dynamic"
-    )
-    reviews_received = db.relationship(
-        "Review", back_populates="reviewee", foreign_keys="Review.revieweeID", lazy="dynamic"
     )
     group_memberships = db.relationship(
         "Group_Members", back_populates="user", cascade="all, delete-orphan", lazy="dynamic"

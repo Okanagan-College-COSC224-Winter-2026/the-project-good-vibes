@@ -11,8 +11,14 @@ from .controllers import (
     auth_controller,
     class_controller,
     fake_api_controller,
+    gradebook_controller,
     user_controller,
     assignment_controller,
+    assignment_resource_controller,
+    group_controller,
+    review_controller,
+    rubric_controller,
+    submission_controller,
 )
 from .models.db import db, ma
 
@@ -107,6 +113,12 @@ def create_app(test_config=None):
     app.register_blueprint(admin_controller.bp)
     app.register_blueprint(class_controller.bp)
     app.register_blueprint(assignment_controller.bp)
+    app.register_blueprint(assignment_resource_controller.bp)
+    app.register_blueprint(group_controller.bp)
+    app.register_blueprint(rubric_controller.bp)
+    app.register_blueprint(review_controller.bp)
+    app.register_blueprint(submission_controller.bp)
+    app.register_blueprint(gradebook_controller.bp)
     app.register_blueprint(fake_api_controller.fake)
 
     return app

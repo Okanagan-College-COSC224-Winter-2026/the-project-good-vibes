@@ -1,5 +1,11 @@
 """
 Review model for the peer evaluation app.
+
+Supports two review types:
+  - "individual": a student reviews another student (revieweeID → User.id)
+  - "group": a group reviews another group (reviewerID → User.id who submitted,
+    revieweeID → CourseGroup.id). Duplicate prevention checks the submitter's
+    group so only one review per source-group/target-group/assignment exists.
 """
 
 from sqlalchemy.orm import joinedload
@@ -15,24 +21,29 @@ class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     assignmentID = db.Column(db.Integer, db.ForeignKey("Assignment.id"), nullable=False, index=True)
     reviewerID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
-    revieweeID = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False, index=True)
+    # revieweeID intentionally has NO foreign-key constraint because it can
+    # reference either a User (individual review) or a CourseGroup (group review).
+    revieweeID = db.Column(db.Integer, nullable=False, index=True)
+    review_type = db.Column(db.String(20), nullable=False, default="individual")  # "individual" | "group"
+    comments = db.Column(db.String(500), nullable=True)
 
-    # relationships - using lazy='joined' for commonly accessed foreign entities
+    # relationships
     assignment = db.relationship("Assignment", back_populates="reviews", lazy="joined")
     reviewer = db.relationship(
         "User", foreign_keys=[reviewerID], back_populates="reviews_made", lazy="joined"
     )
-    reviewee = db.relationship(
-        "User", foreign_keys=[revieweeID], back_populates="reviews_received", lazy="joined"
-    )
+    # NOTE: no 'reviewee' relationship — for individual reviews, resolve manually
+    # via User.get_by_id(); for group reviews, via CourseGroup.get_by_id().
     criteria = db.relationship(
         "Criterion", back_populates="review", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __init__(self, assignmentID, reviewerID, revieweeID):
+    def __init__(self, assignmentID, reviewerID, revieweeID, review_type="individual", comments=None):
         self.assignmentID = assignmentID
         self.reviewerID = reviewerID
         self.revieweeID = revieweeID
+        self.review_type = review_type
+        self.comments = comments
 
     def __repr__(self):
         return f"<Review id={self.id} assignmentID={self.assignmentID}>"
